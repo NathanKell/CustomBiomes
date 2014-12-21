@@ -1,5 +1,5 @@
 ﻿/************************************************************************************
- * Custom Biomes v1.6.6                                                             *
+ * Custom Biomes v1.7.0                                                             *
  * This is the core class for the CustomBiomes mod for Kerbal Space Program.        *
  * It is  licensed under a Creative Commons Attribution-NonCommercial-ShareAlike    *
  * 3.0 Unported License and based on the game produced and under copywrite to Squad.*
@@ -9,7 +9,7 @@
  * This mod uses toadicus and TriggerAu's toolbar wrapper to make use of blizzy's   *
  * toolbar optional. Found in ToolbarWrapper.cs                                     *
  *                                                                                  *
- * Aaron Port (Trueborn) August 2014                                                *
+ * Aaron Port (Trueborn) December 2014                                              *
  * *********************************************************************************/
 using System;
 using System.Collections.Generic;
@@ -47,10 +47,12 @@ namespace CustomBiomes
         private List<sciresult> _resultList; //Storage for my expirament injects
         private int _windowTab;              //Which "tab" the main window is displaying
         private int _lastTab;                //Used to decide if we need to resize the menu window
+        private int _lastBiome=-1;              //Used to decied if we need to recreate the biome texture
+        private Texture2D _map;              //You mean I don't have to regenerate the texture each frame?
         private bool rdInjected=false;       //Have we succuessfully injected our results to R&D?
-        private static String _versionString = "1.6.8";     //Current version of this plugin
+        private static String _versionString = "1.7.0";     //Current version of this plugin
         private static int _compatibleMajorVersion = 0;     //What major version of KSP does this plugin work on?
-        private static int _compatibleMinorVersion = 25;    //What minor version of KSP does this plugin work on?
+        private static int _compatibleMinorVersion = 90;    //What minor version of KSP does this plugin work on?
         private static int _compatibleRevisionVersion = 0;  //What revision of KSP does this plugin work on?
         //private static bool _disabled;      //If this is true, the entire plugin is disabled.
         
@@ -160,8 +162,8 @@ namespace CustomBiomes
                 }
                 else   //If no defaults were set, use the Basic pack as the default
                 {
-                    if (_debug) Debug.Log("(CB) No defaults found, setting all saves to 'Basic' set.");
-                    _saveDictionary.Add(_saveFiles[i], "Basic");
+                    if (_debug) Debug.Log("(CB) No defaults found, setting all saves to 'Disable' set.");
+                    _saveDictionary.Add(_saveFiles[i], "Disable");
                 }
                 //If this is the active save, load the default biome set
                 if (_saveFiles[i].Equals(currentsave) && !_replaced)
@@ -170,7 +172,7 @@ namespace CustomBiomes
                     if (_saveDictionary.TryGetValue(_saveFiles[i], out def))
                         ReplaceBiomes(def);
                     else
-                        ReplaceBiomes("Basic");
+                        ReplaceBiomes("Disable");
                 }
             }
             _defaultSets = buildDefaultsString();
@@ -427,7 +429,9 @@ namespace CustomBiomes
                 }
             }
             //Load the current biome
-            CBAttributeMap biome = LoadBiome(_biomes[_currentBiome]);
+            if (_debug) Debug.Log("(CB) Loading biome attributes for attributes tab...");
+            CBAttributeMapSO biome = LoadBiome(_biomes[_currentBiome]);
+            
             GUILayout.BeginHorizontal();
             //Do the next and prev buttons
             if (GUILayout.Button("<<", _buttonStyle))
@@ -448,36 +452,44 @@ namespace CustomBiomes
                 //_mapWindow.width = 200;
                 if (_debug) Debug.Log("(CB) Current biome is now " + _biomes[_currentBiome]);
             }
-            //If we changed biomes, reset window height
+            //If we changed biomes, reset window height, width
             if (_currentBiome != last)
-                _mainWindow.height = 10;
-            GUILayout.EndHorizontal();
-            GUILayout.Label("Biome Attributes for " + _biomes[_currentBiome], _labelStyle);
-            //_mainWindow.height = 100+biome.Attributes.Length * 20;
-            foreach (CBAttributeMap.MapAttribute att in biome.Attributes)
             {
-                if (att != null)
+                _mainWindow.height = 10;
+                _mainWindow.width = 10;
+            }
+            GUILayout.EndHorizontal();
+            if (biome != null)
+            {
+                GUILayout.Label("Biome Attributes for " + _biomes[_currentBiome], _labelStyle);
+                //_mainWindow.height = 100+biome.Attributes.Length * 20;
+                foreach (CBAttributeMapSO.MapAttribute att in biome.Attributes)
                 {
-                    GUILayout.BeginHorizontal();
-                    GUILayout.Label(att.name + " | " + att.value + " | " + att.mapColor.ToString());
-                    Color tmp = GUI.color;
-                    GUI.color = att.mapColor;
-                    GUILayout.Box("  ", _buttonStyle, GUILayout.Width(20));
-                    GUI.color = tmp;
-                    GUILayout.EndHorizontal();
-                    //Debug.Log(att.name);
+                    if (att != null)
+                    {
+                        GUILayout.BeginHorizontal();
+                        GUILayout.Label(att.name + " | " + att.value + " | " + att.mapColor.ToString());
+                        Color tmp = GUI.color;
+                        GUI.color = att.mapColor;
+                        GUILayout.Box("  ", _buttonStyle, GUILayout.Width(20));
+                        GUI.color = tmp;
+                        GUILayout.EndHorizontal();
+                        //Debug.Log(att.name);
+                    }
+                }
+                if (biome.exactSearch)
+                    GUILayout.Label("Exact Threshold: " + biome.nonExactThreshold);
+                if (_biomes[_currentBiome].Equals(FlightGlobals.currentMainBody.theName))
+                {
+                    double lat, lon;
+                    lat = FlightGlobals.ship_latitude;
+                    lon = FlightGlobals.ship_longitude;
+                    CBAttributeMapSO.MapAttribute ma = FlightGlobals.currentMainBody.BiomeMap.GetAtt(lat * Mathf.Deg2Rad, lon * Mathf.Deg2Rad);
+                    GUILayout.Label("Current Biome: " + ma.name, _labelStyle);
                 }
             }
-            if (biome.exactSearch)
-                GUILayout.Label("Exact Threshold: " + biome.nonExactThreshold);
-            if (_biomes[_currentBiome].Equals(FlightGlobals.currentMainBody.theName))
-            {
-                double lat, lon;
-                lat = FlightGlobals.ship_latitude;
-                lon = FlightGlobals.ship_longitude;
-                CBAttributeMap.MapAttribute ma = FlightGlobals.currentMainBody.BiomeMap.GetAtt(lat * Mathf.Deg2Rad, lon * Mathf.Deg2Rad);
-                GUILayout.Label("Current Biome: " + ma.name, _labelStyle);
-            }
+            else
+                GUILayout.Label("Blank biome at " + _biomes[_currentBiome], _labelStyle);
             if (GUILayout.Button("Toggle Map", _buttonStyle))
             {
                 SaveMe();
@@ -545,7 +557,7 @@ namespace CustomBiomes
         }
 
         //Returns a biome matching the provided name, or null if not found
-        private CBAttributeMap LoadBiome(String name)
+        private CBAttributeMapSO LoadBiome(String name)
         {
             foreach (CelestialBody body in FlightGlobals.Bodies)
             {
@@ -592,7 +604,7 @@ namespace CustomBiomes
                 if (_debug) Debug.Log("(CB) Looking at "+name);
                 _biomes[i] = name;
                 i++;
-                CBAttributeMap biome = body.BiomeMap;
+                CBAttributeMapSO biome = body.BiomeMap;
                 
                 //Try loading a texture file
                 try
@@ -605,7 +617,7 @@ namespace CustomBiomes
                     if (_debug) Debug.Log("(CB) Replacing " + name + "'s biome map.");
                     Texture2D tex = new Texture2D(1024, 512);
                     tex.LoadImage(bytes);
-                    biome.Map = tex;
+                    biome.CreateMap(MapSO.MapDepth.RGB, tex);
                     reader.Close();
                     file.Close();
                 }
@@ -631,13 +643,13 @@ namespace CustomBiomes
                     }
                     else
                         biome.exactSearch = false;
-                    CBAttributeMap.MapAttribute[] attributes = new CBAttributeMap.MapAttribute[0];
+                    CBAttributeMapSO.MapAttribute[] attributes = new CBAttributeMapSO.MapAttribute[0];
                     while (!reader.EndOfStream)
                     {
                         locale = reader.ReadLine();
-                        CBAttributeMap.MapAttribute[] old = new CBAttributeMap.MapAttribute[0];
+                        CBAttributeMapSO.MapAttribute[] old = new CBAttributeMapSO.MapAttribute[0];
                         old = attributes;
-                        attributes = new CBAttributeMap.MapAttribute[old.Length + 1];
+                        attributes = new CBAttributeMapSO.MapAttribute[old.Length + 1];
                         old.CopyTo(attributes, 0);
                         a = float.Parse(reader.ReadLine());
                         if (a > 1) a = a / 255f;
@@ -647,14 +659,14 @@ namespace CustomBiomes
                         if (g > 1) g = g / 255f;
                         b = float.Parse(reader.ReadLine());
                         if (b > 1) b = b / 255f;
-                        CBAttributeMap.MapAttribute temp = new CBAttributeMap.MapAttribute();
+                        CBAttributeMapSO.MapAttribute temp = new CBAttributeMapSO.MapAttribute();
                         temp.name = locale;
                         temp.mapColor = new Color(r, g, b, a);
                         temp.value = a;
                         attributes[attributes.Length - 1] = temp;
                     }
                     biome.Attributes = attributes;
-                    biome.defaultAttribute = attributes[0]; //Seems as good as any
+                    //biome.defaultAttribute = attributes[0]; //Seems as good as any
                     reader.Close(); //Close my files
                     file.Close();
                 }
@@ -711,10 +723,16 @@ namespace CustomBiomes
         //Draws and drags the map window
         private void OnMap(int WindowID)
         {
-            Texture2D map = LoadBiome(_biomes[_currentBiome]).Map;
-            if (map != null)
+            if ((_lastBiome == -1) || (_lastBiome != _currentBiome) || _map == null)
             {
-                GUILayout.Box(map);
+                if (_debug) Debug.Log("(CB) Compiling to texture()");
+                _map = LoadBiome(_biomes[_currentBiome]).CompileToTexture();
+                _lastBiome = _currentBiome;
+            }
+            
+            if (_map != null)
+            {
+                GUILayout.Box(_map,GUILayout.MaxWidth(800),GUILayout.MaxHeight(600));    //resizes, sloppily
                 if (_biomes[_currentBiome].Equals(FlightGlobals.currentMainBody.theName))
                 {
                     float lat, lon;
