@@ -162,8 +162,8 @@ namespace CustomBiomes
                 }
                 else   //If no defaults were set, use the Basic pack as the default
                 {
-                    if (_debug) Debug.Log("(CB) No defaults found, setting all saves to 'Disable' set.");
-                    _saveDictionary.Add(_saveFiles[i], "Disable");
+                    if (_debug) Debug.Log("(CB) No defaults found, setting all saves to 'Basic' set.");
+                    _saveDictionary.Add(_saveFiles[i], "Basic");
                 }
                 //If this is the active save, load the default biome set
                 if (_saveFiles[i].Equals(currentsave) && !_replaced)
@@ -172,7 +172,7 @@ namespace CustomBiomes
                     if (_saveDictionary.TryGetValue(_saveFiles[i], out def))
                         ReplaceBiomes(def);
                     else
-                        ReplaceBiomes("Disable");
+                        ReplaceBiomes("Basic");
                 }
             }
             _defaultSets = buildDefaultsString();
