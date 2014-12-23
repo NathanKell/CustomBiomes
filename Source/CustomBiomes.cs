@@ -229,7 +229,7 @@ namespace CustomBiomes
 
             if (_debug) Debug.Log("(CB) Determining current biome...");
             //Now load the names of all the biomes into an array
-            String _lastMainBody = Planetarium.fetch.CurrentMainBody.theName;
+            String _lastMainBody = Planetarium.fetch.CurrentMainBody.name;
             for (int i = 0; i < _biomes.Length; i++)
             {
                 if (_biomes[i].Equals(_lastMainBody))
@@ -479,7 +479,7 @@ namespace CustomBiomes
                 }
                 if (biome.exactSearch)
                     GUILayout.Label("Exact Threshold: " + biome.nonExactThreshold);
-                if (_biomes[_currentBiome].Equals(FlightGlobals.currentMainBody.theName))
+                if (_biomes[_currentBiome].Equals(FlightGlobals.currentMainBody.name))
                 {
                     double lat, lon;
                     lat = FlightGlobals.ship_latitude;
@@ -561,7 +561,7 @@ namespace CustomBiomes
         {
             foreach (CelestialBody body in FlightGlobals.Bodies)
             {
-                if (body.theName.Equals(name))
+                if (body.name.Equals(name))
                     return body.BiomeMap;
             }
             return null;
@@ -592,7 +592,7 @@ namespace CustomBiomes
             //String path = Directory.GetCurrentDirectory() + dsc + "GameData" + dsc + "CustomBiomes" + dsc + "PluginData" + dsc + "CustomBiomes" + dsc + set + dsc;
             foreach (CelestialBody body in FlightGlobals.Bodies)
             {
-                String name = body.theName;
+                String name = body.name;
                 /*if (name.Length > 3)
                 {
                     if (name.Substring(0,3).Contains("the"))
@@ -733,7 +733,7 @@ namespace CustomBiomes
             if (_map != null)
             {
                 GUILayout.Box(_map,GUILayout.MaxWidth(800),GUILayout.MaxHeight(600));    //resizes, sloppily
-                if (_biomes[_currentBiome].Equals(FlightGlobals.currentMainBody.theName))
+                if (_biomes[_currentBiome].Equals(FlightGlobals.currentMainBody.name))
                 {
                     float lat, lon;
                     lat = (float)FlightGlobals.ship_latitude;
